@@ -1,0 +1,272 @@
+module geometry {
+
+// ---- Globals (const only) ------------------------------------
+const int!32 scale = 3;          // readable from pure functions
+const auto label = "shapes";     // inferred as string
+const uint!7 small = 100;        // 0..127, stored in 8 bits
+const int!7 signed_small = -64;  // -64..63
+
+// ---- Normal (impure) functions: fn with a block --------------
+fn int!32 clamp(int!32 v, int!32 lo, int!32 hi) {
+    if (v < lo) {
+        return lo;
+    }
+    if (v > hi) {
+        return hi;
+    }
+    return v;
+}
+
+// ---- Flat function: one statement, no braces -----------------
+fn void bump(int!32 <> n) n += 1;
+
+// ---- Pure functions: fn with => ------------------------------
+fn int!32 doubled(int!32 v) => v * 2;
+fn int!32 area(int!32 w, int!32 h) => w * h * scale;
+
+// Pure function with a block body: => before the braces
+fn int!32 sum_to(int!32 n) => {
+    int!32 total;                // locals are fine; globals and impure calls are not
+    for (int!32 i = 1; i <= n; i += 1) {
+        total += i;
+    }
+    return total;
+}
+
+// ---- Overloading by input type or count (no keyword) ---------
+fn float!64 half(float!64 v) => v / 2.0;
+fn int!32 half(int!32 v) => v / 2;
+fn float!64 area(float!64 r) => 3.14159!64 * r * r;
+
+// ---- Out (->) and inout (<>) parameters ----------------------
+// Outs are optional, write-only and not part of the signature.
+// There is exactly one parse(string): callers choose how many outs to take.
+fn int!32 parse(string s, bool -> ok, int!32 -> consumed) {
+    int!32 result;               // 0
+    bool good = true;
+    // ... parsing ...
+    ok = good;                   // discarded if the caller omitted it
+    consumed = 3;                // discarded if the caller omitted it
+    return result;
+}
+
+fn void swap(int!32 <> a, int!32 <> b) {
+    int!32 tmp = a;
+    a = b;
+    b = tmp;
+}
+
+// ---- Narrowing needs an explicit cast ------------------------
+fn int!32 truncate(float!64 f) => int!32(f);
+
+// ---- Types ---------------------------------------------------
+struct Point {
+    float!64 x;                  // default 0.0
+    float!64 y;
+
+    fn float!64 length() => sqrt(x * x + y * y);   // pure: borrows this shared
+
+    fn void scale_by(float!64 k) {                 // impure: borrows this exclusively
+        x *= k;
+        y *= k;
+    }
+}
+
+packed struct Header {
+    uint!3 version;              // fields are bit-packed in declaration order
+    uint!5 flags;
+    uint!16 length;              // 24 bits total
+}
+
+class Shape {
+    string name = "shape";       // field default
+
+    Shape(string n) {
+        name = n;                // n is a borrow, so this copies it
+    }
+
+    !Shape() {
+        // destructor (implicitly virtual)
+    }
+
+    virtual fn float!64 area() = 0;          // abstract: Shape cannot be instantiated
+    virtual fn string describe() => name;    // pure, with a default body
+}
+
+class Circle : Shape {
+    float!64 radius = 1.0;       // the default circle has radius 1
+
+    Circle() {
+        super("circle");         // base constructor call, must be first
+    }
+
+    Circle(float!64 r) {
+        super("circle");
+        radius = r;
+    }
+
+    override fn float!64 area() => 3.14159!64 * radius * radius;
+}
+
+singleton Logger {
+    int!32 lines;                // singleton state, default 0
+
+    fn void log(string msg) {    // exclusive borrow of Logger for the call
+        lines += 1;
+    }
+
+    fn int!32 count() => lines;  // pure: reads only this
+}
+
+// ---- Forced initialization -----------------------------------
+fn void defaults() {
+    int!32 i;                    // 0
+    float!64 f;                  // 0.0
+    bool b;                      // false
+    string s;                    // ""
+    int!32[4] fixed;             // four zeros
+    int!32[] dyn;                // empty
+    Circle c;                    // default Circle: radius 1.0, name "circle"
+    Circle* p;                   // empty owning pointer
+    Shape* sh;                   // empty owning pointer to an abstract type (Shape sh; is an error)
+    int!32 k = 3;                // explicit initialiser still fine
+}
+
+// ---- Containers: bounds and lifetime safety ------------------
+fn void containers(int!32[] <> items) {
+    items.push(1);                      // the container owns and grows its storage
+    int!32 a = items[0];                // bounds-checked: out of range traps
+    bool ok;
+    int!32 b = items.get(99, -> ok);    // no trap: default value, ok = false
+
+    int!32@ first = items[0];           // shared reference borrows items
+    // items.push(2);                   // ERROR: first is still live
+    int!32 c = first + 1;               // last use of first
+    items.push(2);                      // fine now
+
+    int!32 d = &items.at_unchecked(0);  // hard-block: skips the bounds check
+}
+
+// ---- Hard-blocked code (&) -----------------------------------
+&fn float!64 read_radius(raw_ptr<Circle> p) {   // whole body is an & scope
+    return p.radius;
+}
+
+// ---- Pointers and references ---------------------------------
+fn void ownership() {
+    Circle* c = new Circle(2.0);          // owning pointer (unique)
+    Circle* d = move(c);                  // ownership transferred; c is now empty
+    raw_ptr<Circle> r = d.raw();          // creating a raw_ptr is safe
+
+    float!64 rad = &read_radius(r);       // one hard-blocked call
+    &{                                    // a hard-blocked scope
+        int!32 whole = truncate(read_radius(r));
+        float!64 again = r.radius;        // raw_ptr dereference, no extra markers needed
+    }
+
+    int!32 x = 5;
+    int!32@ view = x;                     // shared reference: read-only
+    int!32 y = view + 1;                  // y is 6; view's last use is here
+    int!32 exc@ ref = x;                  // exclusive reference
+    ref += 1;                             // x is now 6
+}                                         // d is destroyed here
+
+fn void take(Circle* owned) {             // takes ownership of the circle
+    // ... owned is destroyed at the end of this function ...
+}
+
+fn void give() {
+    Circle* c = new Circle(3.0);
+    take(move(c));                        // c is empty after this
+}
+
+// ---- Control flow --------------------------------------------
+// items is an exclusive borrow (inout) because the last loop mutates it.
+fn void flow(int!32[] <> items, int!32 <> total) {
+    int!32 i;
+    while (i < 10) {
+        i += 1;
+    }
+
+    for (int!32 j = 0; j < 10; j += 1) {
+        total += j;
+    }
+
+    for (auto (idx, v) ~ en(items)) {     // en is in the standard library
+        total += int!32(idx) * v;         // idx is uint!64, so narrowing needs a cast
+    }
+
+    for (int!32 x ~ items) {              // explicit loop variable type
+        total += x;
+    }
+
+    for (auto exc@ item ~ items) {        // mutate in place
+        item *= 2;
+    }
+}
+
+// ---- Calling conventions at call sites -----------------------
+fn void callers(int!32[] <> items) {
+    int!32 a = parse("42");                  // all outs omitted
+    bool ok;
+    int!32 b = parse("42", -> ok);           // first out supplied
+    int!32 n;
+    int!32 c = parse("42", -> ok, -> n);     // both outs supplied
+    int!32 d = parse("42", -> _, -> n);      // skip the first out, take the second
+
+    bump(<> b);
+    swap(<> a, <> b);
+
+    // swap(<> a, <> a);                     // ERROR: a is passed twice, once as inout
+    // parse("42", -> n, -> n);              // ERROR: n is passed to two outs
+    // flow(<> items, <> items[0]);          // ERROR: items[0] is inside items
+
+    Logger.log("done");                      // singleton call: safe, no marker
+
+    Circle* circ = new Circle(1.5);
+    float!64 ar = circ.area();               // instance method (=> method: shared borrow)
+
+    int!32 limited = geometry.clamp(a, 0, 10);   // module-qualified
+
+    int!32 total;
+    if (ok) {
+        total += limited + c + d + n;
+    }
+    flow(<> items, <> total);
+}
+
+// ---- C++ interop ---------------------------------------------
+extern "C++" {
+    fn int!32 cpp_add(int!32 a, int!32 b);   // implicitly &fn
+}
+
+fn void interop() {
+    int!32 sum = &cpp_add(1, 2);             // extern call needs the marker
+}
+
+}
+
+// ============================================================
+// Overloads, apply and patch (separate module)
+// ============================================================
+
+module fixes {
+
+// Same name, inputs and return type as the original => overload is required.
+overload fn float!64 Circle.area() => 3.14159265358979!64 * radius * radius;
+
+// Same inputs and return, different outs.
+overload fn int!32 geometry.parse(string s, bool -> ok, int!32 -> consumed, int!32 -> warnings) {
+    // ... improved parser that also reports warnings ...
+    return 0;
+}
+
+}
+
+fn void patched_scope() {
+    apply fixes Circle area;                 // scoped: only calls in this block see it
+    Circle* c = new Circle(1.0);
+    float!64 a = c.area();                   // uses fixes.Circle.area
+}
+
+patch fixes Circle area;                     // global: every call in the program sees it

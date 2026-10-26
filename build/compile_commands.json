@@ -1,0 +1,14 @@
+[
+{
+  "directory": "/home/yanni/Documents/oryn/build",
+  "command": "/usr/bin/clang++  -I/home/yanni/Documents/oryn/src -std=c++17 -o CMakeFiles/oryn.dir/src/lexer/lexer.cpp.o -c /home/yanni/Documents/oryn/src/lexer/lexer.cpp",
+  "file": "/home/yanni/Documents/oryn/src/lexer/lexer.cpp",
+  "output": "CMakeFiles/oryn.dir/src/lexer/lexer.cpp.o"
+},
+{
+  "directory": "/home/yanni/Documents/oryn/build",
+  "command": "/usr/bin/clang++  -I/home/yanni/Documents/oryn/src -std=c++17 -o CMakeFiles/oryn.dir/src/main.cpp.o -c /home/yanni/Documents/oryn/src/main.cpp",
+  "file": "/home/yanni/Documents/oryn/src/main.cpp",
+  "output": "CMakeFiles/oryn.dir/src/main.cpp.o"
+}
+]

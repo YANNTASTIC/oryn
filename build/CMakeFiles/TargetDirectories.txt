@@ -1,0 +1,3 @@
+/home/yanni/Documents/oryn/build/CMakeFiles/oryn.dir
+/home/yanni/Documents/oryn/build/CMakeFiles/edit_cache.dir
+/home/yanni/Documents/oryn/build/CMakeFiles/rebuild_cache.dir
