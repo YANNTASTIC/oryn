@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 enum TokenType : uint8_t {
   Operator,
@@ -21,3 +22,15 @@ struct Token {
   std::size_t column;
 };
 
+constexpr std::string_view to_string(TokenType type) noexcept {
+  switch (type) {
+    case TokenType::EndOfFile:  return "EndOfFile";
+    case TokenType::Keyword:    return "Keyword";
+    case TokenType::Identifier: return "Identifier";
+    case TokenType::Literal:    return "Literal";
+    case TokenType::Operator:   return "Operator";
+    case TokenType::Separator:  return "Separator";
+    case TokenType::Invalid:    return "Invalid";
+  }
+  return "Unknown";
+}

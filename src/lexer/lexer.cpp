@@ -31,13 +31,29 @@ bool Lexer::advance(uint n) {
   return cursor < source.size();
 }
 
-std::pair<bool, Token> Lexer::next() {
-  while (cursor < source.size() && LexUtils::is_whitespace(peek())) {
-    advance();
+void Lexer::skip_trivia() {
+  while (cursor < source.size()) {
+    char c = peek();
+
+    if (LexUtils::is_whitespace(c)) {
+      advance();
+    } else if (c == '/' && peek(1) == '/') {
+      while (cursor < source.size() && peek() != '\n') advance();
+    } else if (c == '/' && peek(1) == '*') {
+      advance(2);
+      while (cursor < source.size() && !(peek() == '*' && peek(1) == '/')) advance();
+      advance(2);  // consume the closing */ (a no-op if the comment was unterminated)
+    } else {
+      break;
+    }
   }
+}
+
+std::pair<bool, Token> Lexer::next() {
+  skip_trivia();
 
   char c = peek();
-  
+
   std::size_t init_row = row;
   std::size_t init_column = column;
 
@@ -91,35 +107,13 @@ std::pair<bool, Token> Lexer::next() {
         offset++;
       }
     }
-
-    // 3. Scan Dynamic Type Suffix (e.g., 10int!32, 5uint!8, 3.14float!64)
-    size_t suffix_offset = offset;
-    std::string_view remaining = source.substr(cursor + suffix_offset);
-
-    // Look for any of the valid text prefixes safely
-    bool has_int_prefix   = (remaining.rfind("int!", 0) == 0);
-    bool has_uint_prefix  = (remaining.rfind("uint!", 0) == 0);
-    bool has_float_prefix = (remaining.rfind("float!", 0) == 0);
-
-    if (has_int_prefix || has_uint_prefix || has_float_prefix) {
-      // Advance suffix pointer past the text prefix:
-      // 'int!' = 4, 'uint!' = 5, 'float!' = 6 characters
-      if (has_int_prefix)        suffix_offset += 4;
-      else if (has_uint_prefix)  suffix_offset += 5;
-      else if (has_float_prefix) suffix_offset += 6;
-
-      // Ensure there is at least one digit following the '!'
-      if (cursor + suffix_offset < source.size() && 
-          LexUtils::is_digit(source[cursor + suffix_offset])) {
-          
-        // Consume all subsequent digits representing the bit size
-        while (cursor + suffix_offset < source.size() && 
-               LexUtils::is_digit(source[cursor + suffix_offset])) {
-          suffix_offset++;
-        }
-        
-        // If the pattern successfully matched, commit the entire suffix length
-        offset = suffix_offset;
+    // 3. Optional bit-width suffix: '!' followed by digits (e.g., 3.14159!64, 10!32)
+    if (cursor + offset + 1 < source.size() &&
+        source[cursor + offset] == '!' &&
+        LexUtils::is_digit(source[cursor + offset + 1])) {
+      offset += 2;
+      while (cursor + offset < source.size() && LexUtils::is_digit(source[cursor + offset])) {
+        offset++;
       }
     }
 

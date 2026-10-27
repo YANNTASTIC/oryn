@@ -18,6 +18,7 @@ class Lexer {
 
     bool advance(uint n = 1);
 
+    void skip_trivia();
     std::pair<bool, Token> next();
 
     char peek(size_t offset = 0) const noexcept;

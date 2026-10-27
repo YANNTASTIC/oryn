@@ -26,7 +26,8 @@ int main(int argc, char* argv[]) {
   std::vector<Token> tokens = lexer.lex(); 
 
   for (auto token : tokens) {
-    std::cout << token.lexeme << std::endl;
+    std::cout << "[" << to_string(token.type) << "," << token.lexeme << "," << std::to_string(token.row) << "," << std::to_string(token.column) << "]" << std::endl;
+
   }
   return 0;
 }
