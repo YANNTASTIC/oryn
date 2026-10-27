@@ -2,6 +2,8 @@
 #include "lang.hpp"
 #include "lexutils.hpp"
 #include "token.hpp"
+#include <cstddef>
+#include <string>
 
 std::vector<Token> Lexer::lex() {
   std::pair<bool, Token> val = std::make_pair(true, Token{});
@@ -58,6 +60,7 @@ std::pair<bool, Token> Lexer::next() {
   std::size_t init_column = column;
 
   std::string_view lexeme;
+  
 
   // Check for EOF
   if (c == '\0') {
@@ -122,6 +125,34 @@ std::pair<bool, Token> Lexer::next() {
     advance(lexeme.size());
 
     return {true, Token{ TokenType::Literal, std::string(lexeme), init_row, init_column }};
+  }
+
+
+  // Check for String
+
+  if (c == '""'){
+    size_t offset = 1;
+    bool terminated = false;
+
+    while (cursor + offset < source.size()) {
+      char ch = source[cursor + offset];
+
+      if (ch == "\n") break;
+      if (ch == "\\") {
+        offset += 2;
+        continue;
+      }
+
+      offset ++;
+      if (ch == '""') {
+        terminated == true;
+        break;
+      }
+    }
+
+    lexeme = source.substr(cursor, offset);
+    advance(lexeme.size());
+    return {true, Token { terminated ? TokenType::String : TokenType::Invalid, std::string(lexeme), init_row, init_column  }};
   }
   
   // Check for Punc

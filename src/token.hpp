@@ -12,6 +12,7 @@ enum TokenType : uint8_t {
   Literal,
   Separator,
   EndOfFile,
+  String,
   Invalid
 };
 
@@ -25,6 +26,7 @@ struct Token {
 constexpr std::string_view to_string(TokenType type) noexcept {
   switch (type) {
     case TokenType::EndOfFile:  return "EndOfFile";
+    case TokenType::String:     return "String";
     case TokenType::Keyword:    return "Keyword";
     case TokenType::Identifier: return "Identifier";
     case TokenType::Literal:    return "Literal";
