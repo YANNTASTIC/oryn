@@ -4,7 +4,8 @@
 namespace Lang {
   inline constexpr std::string_view KEYWORDS[] = {
       "if", "else", "while", "for", "return", "fn", "virtual", "override",
-      "auto", "en", "exc", "overload", "apply", "patch", "struct", "class"
+      "auto", "exc", "overload", "apply", "patch", "struct", "class",
+      "const", "module", "singleton", "packed", "new", "extern", "super", "true", "false",
   };
 
   inline bool is_keyword(std::string_view in) {

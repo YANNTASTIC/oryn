@@ -16,8 +16,8 @@ class Lexer {
     std::size_t row = 1;
     std::size_t column = 1;
 
-    bool advance(uint n = 1);
-
+    bool advance(std::size_t n = 1);
+    
     void skip_trivia();
     std::pair<bool, Token> next();
 

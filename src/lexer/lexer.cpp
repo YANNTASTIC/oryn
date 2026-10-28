@@ -15,7 +15,7 @@ std::vector<Token> Lexer::lex() {
   return tokens;
 }
 
-bool Lexer::advance(uint n) {
+bool Lexer::advance(std::size_t n) {
   // Loop advance n times
   for (int i = 0; i < n; i++) {
     if (cursor >= source.size()) return false;
@@ -173,7 +173,7 @@ std::pair<bool, Token> Lexer::next() {
     std::string strlexeme(1, c);
     advance(1);
     TokenType type;
-    if (c == ';' || c == ',' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']' || c == '<' || c == '>') {
+    if (c == ';' || c == ',' || c == '(' || c == ')' || c == '{' || c == '}' || c == '[' || c == ']') {
       type = TokenType::Separator;
     } else {
       type = TokenType::Operator; // Captures @, ~, &, +, -, *, /, etc.
